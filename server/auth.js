@@ -112,7 +112,7 @@ setInterval(() => {
   const now = Date.now();
   for (const [k, arr] of buckets) if (!arr.length || now - arr[arr.length - 1] > 3600_000) buckets.delete(k);
   purgeExpiredSessions();
-}, 600_000).unref();
+}, 600_000).unref?.();
 
 // Sessions whose token was never presented again (closed tabs) would otherwise stay forever.
 export function purgeExpiredSessions() {

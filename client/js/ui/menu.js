@@ -10,6 +10,7 @@ import { FriendsTab } from './tabs/friends.js';
 import { PartyTab } from './tabs/party.js';
 import { ArmoryTab } from './tabs/armory.js';
 import { CratesTab } from './tabs/crates.js';
+import { LOCAL } from '../api.js';
 
 const TABS = [
   { id: 'play', label: 'Play', C: PlayTab },
@@ -19,7 +20,7 @@ const TABS = [
   { id: 'crates', label: 'Crates', C: CratesTab },
   { id: 'profile', label: 'Profile', C: ProfileTab },
   { id: 'settings', label: 'Settings', C: SettingsTab },
-];
+].filter((t) => !(LOCAL && (t.id === 'friends' || t.id === 'party'))); // bots only: nobody to befriend
 
 export class MenuScreen {
   constructor(app, tab = 'play') {
@@ -29,7 +30,7 @@ export class MenuScreen {
     this.meSub = h('span', { class: 'me-sub' });
     this.meAvatar = h('span', { class: 'me-av' });
     this.pane = h('main', { class: 'main-pane' });
-    this.chat = new ChatPanel(app, ['lobby', 'party']);
+    this.chat = new ChatPanel(app, LOCAL ? ['lobby'] : ['lobby', 'party']);
     this.connEl = h('span', { class: 'conn-chip hidden', text: 'Reconnecting…' });
     // nav buttons are built once; active state and badges update in place
     this.navBtns = new Map();
@@ -48,7 +49,7 @@ export class MenuScreen {
         h('div', { class: 'coins', title: 'Coins — earn them by playing', id: 'coin-balance' }, h('span', { class: 'coin-ico' }), this.coinsEl),
         h('button', { class: 'me-chip', type: 'button', title: 'Your profile', onClick: () => this.setTab('profile') },
           this.meAvatar, h('span', { class: 'me-text' }, this.meName, this.meSub)),
-        h('button', { class: 'icon-btn logout', id: 'btn-logout', type: 'button', title: 'Log out', onClick: () => this.app.logout() },
+        LOCAL ? null : h('button', { class: 'icon-btn logout', id: 'btn-logout', type: 'button', title: 'Log out', onClick: () => this.app.logout() },
           uiIcon('logout', 'lo-ico'), h('span', { class: 'lo-txt', text: 'Log out' }))),
       this.nav,
       this.pane,

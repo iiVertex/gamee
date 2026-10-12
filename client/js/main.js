@@ -1,5 +1,5 @@
 // yoink! client entry: screen routing, session, realtime event wiring.
-import { api, session } from './api.js';
+import { api, session, LOCAL } from './api.js';
 import { Net } from './net.js';
 import { audio } from './audio.js';
 import { ChatStore } from './chat.js';
@@ -32,6 +32,10 @@ class App {
     document.addEventListener('pointerdown', unlock);
     document.addEventListener('keydown', unlock);
     document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.btn')) audio.play('click'); });
+    if (LOCAL) {
+      const { token, user } = await window.yoinkLocal.guestLogin();
+      return this.onAuthed(token, user, false);
+    }
     const token = session.token;
     if (token) {
       const me = await api.me();
@@ -229,6 +233,8 @@ class App {
     this.lastPractice = practice;
     const r = await this.net.request('queue:join', { mode, practice });
     if (r.error) { toast(r.error, 'error'); audio.play('error'); return false; }
+    // nobody else to wait for: start with bots straight away
+    if (LOCAL && !practice) await this.net.request('queue:startNow');
     // practice matches start right away: their map vote arrives before this answer,
     // so a caller's "go back to the menu" must not replace the vote screen
     if (this.screen instanceof VoteScreen) this.keepScreenUntil = performance.now() + 800;

@@ -2,6 +2,9 @@
 // the server validates it on every request and socket connection.
 const KEY = 'yoink_token';
 
+// Static build (no Node server): the server runs inside the page, bots only (see js/local/).
+export const LOCAL = !!window.yoinkLocal;
+
 export const session = {
   get token() {
     try { return sessionStorage.getItem(KEY) || localStorage.getItem(KEY); } catch { return null; }

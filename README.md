@@ -53,6 +53,20 @@ Start the server on one PC and have friends open the printed **LAN** address (`h
 
 Everyone connects to the same server address. Each friend makes their own account, adds the others as friends (Friends tab → search by username), and the party leader invites them (Party tab).
 
+### Static hosting (Vercel, Netlify…): single-player vs bots
+
+Hosts that only serve static files can't run the multiplayer server, so there is also a serverless build where the server modules run inside the page:
+
+```bash
+npm run build:static   # writes dist/
+```
+
+Upload `dist/` to any static host. On **Vercel**, just import the repo: `vercel.json` already sets the install command, build command and output directory. In this version:
+
+* There are no real players. **Play** starts a match with bots right away (full coins), and **Practice** works as usual (half coins).
+* There's no login. Each browser gets a guest account, and coins, skins and stats are saved in that browser's `localStorage`.
+* Friends and parties are hidden.
+
 ### Configuration (environment variables)
 
 | Variable | Default | Meaning |

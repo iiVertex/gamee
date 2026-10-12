@@ -4,6 +4,7 @@ import { audio } from '../../audio.js';
 import { avatarImg } from '../avatarIcon.js';
 import { modeArt, modeLength, MODE_TAGLINE } from '../art.js';
 import { Showcase } from '../showcase.js';
+import { LOCAL } from '../../api.js';
 
 export class PlayTab {
   constructor(app) {
@@ -54,7 +55,7 @@ export class PlayTab {
       h('section', { class: 'mode-col' },
         h('div', { class: 'col-head' },
           h('h1', { class: 'pane-title', text: 'Choose a mode' }),
-          h('p', { class: 'pane-sub', text: 'Find a match or practice against bots. Every match starts with a map vote.' })),
+          h('p', { class: 'pane-sub', text: LOCAL ? 'Play against bots. Every match starts with a map vote.' : 'Find a match or practice against bots. Every match starts with a map vote.' })),
         this.cards),
       this.stage);
 
@@ -100,8 +101,8 @@ export class PlayTab {
     const queued = !!this.app.queue;
     this.findBtn.disabled = queued || !isLeader;
     this.practiceBtn.disabled = queued || !isLeader;
-    mount(this.findBtn, h('span', { class: 'bi', text: '▶' }), h('span', { class: 'bl' }, 'Find match', h('small', { text: party ? `with your party (${party.members.length})` : 'vs real players' })));
-    mount(this.practiceBtn, h('span', { class: 'bi', text: '🤖' }), h('span', { class: 'bl' }, 'Practice', h('small', { text: party ? 'party vs bots' : 'vs bots' })));
+    mount(this.findBtn, h('span', { class: 'bi', text: '▶' }), h('span', { class: 'bl' }, LOCAL ? 'Play' : 'Find match', h('small', { text: LOCAL ? 'vs bots · full coins' : party ? `with your party (${party.members.length})` : 'vs real players' })));
+    mount(this.practiceBtn, h('span', { class: 'bi', text: '🤖' }), h('span', { class: 'bl' }, 'Practice', h('small', { text: LOCAL ? 'vs bots · half coins' : party ? 'party vs bots' : 'vs bots' })));
     let note = '';
     if (party && !isLeader) note = 'Only your party leader can start matches. Mark yourself READY in the Party tab.';
     else if (party) note = 'Your whole party joins together. Everyone must be READY.';
@@ -124,8 +125,8 @@ export class PlayTab {
         h('button', { class: 'btn small gray', text: 'Manage', onClick: go }));
     } else {
       mount(this.partyStrip,
-        h('div', { class: 'sp-text' }, h('b', { text: 'Playing solo' }), h('span', { text: 'Team up with up to 3 friends' })),
-        h('button', { class: 'btn small purple', text: '+ Invite', onClick: go }));
+        h('div', { class: 'sp-text' }, h('b', { text: 'Playing solo' }), h('span', { text: LOCAL ? 'Offline version: bots only' : 'Team up with up to 3 friends' })),
+        LOCAL ? null : h('button', { class: 'btn small purple', text: '+ Invite', onClick: go }));
     }
     const wins = u.wins ?? 0, matches = u.matches ?? 0;
     mount(this.stats,

@@ -13,7 +13,7 @@ export class Net {
 
   connect() {
     return new Promise((resolve, reject) => {
-      const s = io({ auth: { token: this.token }, transports: ['websocket', 'polling'], reconnectionDelay: 800, reconnectionDelayMax: 4000 });
+      const s = (window.yoinkLocal ? window.yoinkLocal.io : io)({ auth: { token: this.token }, transports: ['websocket', 'polling'], reconnectionDelay: 800, reconnectionDelayMax: 4000 });
       this.socket = s;
       let first = true;
       s.on('connect', () => {
