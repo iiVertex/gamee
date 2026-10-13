@@ -148,7 +148,8 @@ export class ViewModel {
     if (this.reloadT > 0) this.reloadT = Math.max(0, this.reloadT - dt);
     if (this.flashT !== undefined) { this.flashT -= dt; if (this.flashT <= 0) this.flash.visible = false; }
     const adsTarget = ads && this.state === 'weapon' && this.reloadT <= 0 ? 1 : 0;
-    this.ads += (adsTarget - this.ads) * Math.min(1, dt * 14);
+    this.ads += (adsTarget - this.ads) * (1 - Math.exp(-dt * 14)); // frame-rate independent ease
+    if (Math.abs(adsTarget - this.ads) < 0.001) this.ads = adsTarget;
 
     const sw = this.switchT > 0 ? Math.sin((this.switchT / 0.3) * Math.PI) * 0.25 : 0;
     const baseX = -this.swayX - bx * (1 - this.ads * 0.85);
@@ -164,8 +165,9 @@ export class ViewModel {
       // aim down sights: the sight line sits on the screen centre
       const adsX = 0, adsY = -hold.sight * VM_SCALE, adsZ = this.weaponType === 'sniper' ? -0.2 : -0.24;
       const k = this.ads;
-      const px = hipX + (adsX - hipX) * k + baseX * (1 - k * 0.7);
-      const py = hipY + (adsY - hipY) * k + baseY * (1 - k * 0.7) - rl * 0.1 - run * 0.04;
+      // sway/bob mostly settle while aimed so the sights stay on the crosshair
+      const px = hipX + (adsX - hipX) * k + baseX * (1 - k * 0.9);
+      const py = hipY + (adsY - hipY) * k + baseY * (1 - k * 0.9) - rl * 0.1 - run * 0.04;
       const pz = hipZ + (adsZ - hipZ) * k + this.recoil * 0.55;
       this.itemAnchor.position.set(px, py, pz);
       this.itemAnchor.rotation.set(

@@ -136,6 +136,7 @@ export class Game {
     // clicking the 3D view always gets the player back into the game (closes an open chat box)
     this.clickCatcher = h('div', { style: { position: 'absolute', inset: '0' }, onClick: () => { if (this.chatOpen) this.closeChat(); else if (!this.panel) this.input.lock(); } });
     this.root.insertBefore(this.clickCatcher, this.hudWrap);
+    this.input.surfaces.add(this.clickCatcher);
     this.buildGameChat();
 
     this.onResize = () => this.resize();
@@ -643,6 +644,8 @@ export class Game {
     const L = Math.hypot(fx, fz);
     if (L > 0) { fx /= L; fz /= L; }
     const healing = this.healUntil && performance.now() < this.healUntil;
+    const w = this.heldWeapon();
+    this.ads = !!(w && inp.buttons.has(2) && this.combat);
     const sprint = inp.down('sprint') && mz > 0 && !this.ads;
     const jump = inp.down('jump');
 
@@ -658,8 +661,6 @@ export class Game {
       const ni = (i + (inp.wheel > 0 ? 1 : -1) + avail.length) % avail.length;
       this.selectSlot(avail[ni]);
     }
-    const w = this.heldWeapon();
-    this.ads = !!(w && inp.buttons.has(2) && this.combat);
     if (w && this.combat) {
       const def = WEAPONS[w.t];
       // a quick click (press + release inside one frame) still fires one shot
@@ -872,14 +873,16 @@ export class Game {
       cam.rotation.x += (Math.random() - 0.5) * this.shake * 0.05;
       cam.rotation.y += (Math.random() - 0.5) * this.shake * 0.05;
     }
-    // fov
+    // fov: zoom follows the viewmodel's eased aim amount, so FOV, sensitivity and the sights move together
     const w = this.heldWeapon();
-    const zoom = this.ads && w ? WEAPONS[w.t].zoom : 1;
+    if (w) this.adsMaxZoom = WEAPONS[w.t].zoom;
+    const adsK = this.vm.ads > 0.001 ? this.vm.ads : 0;
+    const zoom = 1 + ((this.adsMaxZoom || 1) - 1) * adsK;
     this.adsZoom = zoom;
     const sprinting = inputState.sprint && Math.hypot(this.body.vx, this.body.vz) > 6;
     const targetFov = settings.fov / zoom + (sprinting ? 5 : 0);
     if (Math.abs(cam.fov - targetFov) > 0.05) { cam.fov += (targetFov - cam.fov) * Math.min(1, dt * 12); cam.updateProjectionMatrix(); }
-    this.hud.crosshair.classList.toggle('hidden', !!(this.ads && w && w.t === 'sniper'));
+    this.hud.crosshair.classList.toggle('hidden', !!(this.ads && w && w.t === 'sniper' && adsK > 0.6));
     this.hud.crosshair.classList.toggle('dot', !!this.ads);
     audio.setListener(cam.position.x, cam.position.y, cam.position.z, cam.rotation.y); // follows the spectated view too
 

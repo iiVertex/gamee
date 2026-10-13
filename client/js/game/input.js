@@ -13,6 +13,10 @@ export class Input {
     this.locked = false;
     this.enabled = true;
     this.handlers = {};
+    // elements that make up the 3D view: right-clicking them never opens the browser menu
+    this.surfaces = new Set([el]);
+    this._rmbGame = false; // right button went down during gameplay (its context menu must not show)
+    this._menuBlockUntil = 0;
     this._onKeyDown = (e) => {
       if (!this.enabled) return;
       if (isTyping(e)) return;
@@ -27,24 +31,38 @@ export class Input {
       if (!this.locked || (window.__YOINK_TEST__ && !document.pointerLockElement)) return;
       this.mouseDX += e.movementX || 0;
       this.mouseDY += e.movementY || 0;
+      this._syncButtons(e);
     };
     this._onMouseDown = (e) => {
       // with real pointer lock all mouse events go to the canvas; automated tests click the game area instead
       if (!this.locked || (window.__YOINK_TEST__ && !(e.target && e.target.closest && e.target.closest('#game-root')))) return;
       this.buttons.add(e.button);
       this.clicked.add(e.button);
+      if (e.button === 2) this._rmbGame = true;
       e.preventDefault();
+      this._syncButtons(e);
     };
-    this._onMouseUp = (e) => { this.buttons.delete(e.button); };
+    this._onMouseUp = (e) => {
+      this.buttons.delete(e.button);
+      if (e.button === 2 && this._rmbGame) { this._rmbGame = false; this._menuBlockUntil = performance.now() + 500; }
+      this._syncButtons(e);
+    };
     this._onWheel = (e) => { if (this.locked) this.wheel += Math.sign(e.deltaY); };
     this._onLockChange = () => {
       const was = this.locked;
       this.locked = document.pointerLockElement === this.el || !!window.__YOINK_TEST__;
-      if (!this.locked) { this.keys.clear(); this.buttons.clear(); }
+      if (!this.locked) this.release();
       if (was !== this.locked) this.handlers.lock && this.handlers.lock(this.locked);
     };
-    this._onBlur = () => { this.keys.clear(); this.buttons.clear(); };
-    this._onContext = (e) => { if (this.locked) e.preventDefault(); };
+    this._onBlur = () => this.release();
+    this._onVisibility = () => { if (document.hidden) this.release(); };
+    // no browser menu while playing, on the 3D view, or for a right press that began in-game
+    // (Windows fires contextmenu on release, which can land after pausing); menus/chat keep it
+    this._onContext = (e) => {
+      const fromGame = this._rmbGame || performance.now() < this._menuBlockUntil;
+      if (this.locked || fromGame || this.surfaces.has(e.target)) e.preventDefault();
+      this._rmbGame = false; this._menuBlockUntil = 0;
+    };
     window.addEventListener('keydown', this._onKeyDown);
     window.addEventListener('keyup', this._onKeyUp);
     window.addEventListener('mousemove', this._onMouseMove);
@@ -54,6 +72,21 @@ export class Input {
     window.addEventListener('blur', this._onBlur);
     window.addEventListener('contextmenu', this._onContext);
     document.addEventListener('pointerlockchange', this._onLockChange);
+    document.addEventListener('visibilitychange', this._onVisibility);
+  }
+
+  // drop every held key/button (focus loss, pause, pointer unlock) so nothing stays stuck
+  release() {
+    this.keys.clear(); this.buttons.clear(); this.clicked.clear();
+    this.mouseDX = 0; this.mouseDY = 0;
+  }
+
+  // e.buttons is the true button state: it repairs a lost mouseup (stuck aim/fire) and picks up
+  // a right button that was already held when the game took the pointer back
+  _syncButtons(e) {
+    if (typeof e.buttons !== 'number') return;
+    for (const b of this.buttons) if (!(e.buttons & BUTTON_BIT[b])) this.buttons.delete(b);
+    if (this.locked && (e.buttons & 2)) this.buttons.add(2);
   }
 
   lock() {
@@ -87,9 +120,13 @@ export class Input {
     window.removeEventListener('blur', this._onBlur);
     window.removeEventListener('contextmenu', this._onContext);
     document.removeEventListener('pointerlockchange', this._onLockChange);
+    document.removeEventListener('visibilitychange', this._onVisibility);
     this.unlock();
   }
 }
+
+// MouseEvent.button -> MouseEvent.buttons bit
+const BUTTON_BIT = [1, 4, 2, 8, 16];
 
 function isTyping(e) {
   const t = e.target;
